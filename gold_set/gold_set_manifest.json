@@ -1,0 +1,37 @@
+{
+  "dataset": "knowledge-pollution-firewall-gold-set",
+  "version": "0.1.0-draft",
+  "created_at": "2026-09-09",
+  "freeze_status": "draft_pending_product_owner_approval",
+  "case_count": 20,
+  "category_counts": {
+    "clean_allow": 4,
+    "incorrect_information": 4,
+    "stale_information": 4,
+    "post_correction_old_information": 4,
+    "stale_snapshot_overwrite": 2,
+    "realtime_evidence_priority": 2
+  },
+  "files": {
+    "knowledge": {
+      "path": "data/flask_versioned_knowledge.jsonl",
+      "sha256": "a823bdae0266ff231958e9229856bda3ef531c33b192f572ed96bb8d4ea0f081"
+    },
+    "cases": {
+      "path": "gold_set/gold_set_v0.jsonl",
+      "sha256": "b4ac90b538e485eb227ad810836d067ddd82154a953a67391b97bfdf794b14cf"
+    },
+    "schema": {
+      "path": "gold_set/gold_set_schema.json",
+      "sha256": "f9eed8b50a94f340b94aa18d6d09f661b4def5b21399b872a1dd5f5543153ded"
+    },
+    "validator": {
+      "path": "tests/validate_gold_set.py",
+      "sha256": "149791a142e33c38d518690afeb0d5fc4b3d197cbb3a8802056c3909582cac8d"
+    }
+  },
+  "validation": {
+    "command": "python3 tests/validate_gold_set.py",
+    "status": "passed"
+  }
+}

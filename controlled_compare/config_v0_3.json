@@ -1,0 +1,140 @@
+{
+  "protocol_version": "0.3",
+  "status": "implementation_candidate",
+  "rule_version": "0.3.1-scope-target",
+  "prompt_version": "0.3.1-scope-target",
+  "datasets": {
+    "system-dev": "system_gold_v0_1.jsonl",
+    "semantic-gold": "semantic_gold_v0_1.jsonl"
+  },
+  "repetitions": 1,
+  "model": {
+    "provider": "alibaba_bailian",
+    "region": "ap-northeast-1",
+    "model_id": "qwen3.7-max-2026-05-20",
+    "enable_thinking": true,
+    "temperature": 0.2,
+    "top_p": null,
+    "preserve_thinking": false,
+    "tools_enabled": false,
+    "confirmation": "carried_forward_from_human_confirmed_v0.2"
+  },
+  "pricing_cny_per_million_tokens": {
+    "input": 1.65,
+    "output": 4.951,
+    "note": "Carried forward from v0.2 for comparable local accounting; provider billing remains authoritative."
+  },
+  "architecture": {
+    "baseline_max_calls": 0,
+    "single_max_calls": 1,
+    "multi_max_calls": 4,
+    "multi_explicit_deny_short_circuit": true,
+    "multi_extra_roles": [
+      "provenance_conflict_auditor",
+      "write_risk_auditor",
+      "arbiter"
+    ]
+  },
+  "budgets": {
+    "total_token_ceiling_per_candidate": 16384,
+    "single_max_output_tokens": 4096,
+    "multi_auditor_max_output_tokens": 2048,
+    "multi_arbiter_max_output_tokens": 4096,
+    "reservation": "input_estimate_plus_max_output_before_dispatch",
+    "unknown_usage_counts_as_reserved": true,
+    "hidden_transport_retries": false
+  },
+  "trusted_evidence": {
+    "explicit_status_values": ["verified", "trusted", "confirmed"],
+    "default_allowlisted_source_types": [
+      "user_direct",
+      "human_confirmed",
+      "stored_memory",
+      "persisted_structured_fields",
+      "rendered_content",
+      "system_observation",
+      "document_verified"
+    ],
+    "conflict_requires_distinct_trusted_evidence_items": 2
+  },
+  "latency_targets_seconds": {
+    "single": 60,
+    "multi": 180
+  },
+  "patch_execution": {
+    "content_fields": ["patch"],
+    "immutable_digest": "sha256",
+    "destinations": ["none", "sandbox", "production"],
+    "evaluation_permit_destination": "sandbox",
+    "evaluation_block_destination": "none",
+    "sandbox_namespace_prefix": "test-only/",
+    "maximum_evaluation_production_routes": 0,
+    "maximum_sandbox_execution_failures": 0,
+    "confirmation": "human_confirmed"
+  },
+  "production_storage_classes": {
+    "low_risk": "direct_when_all_write_conditions_pass",
+    "sensitive_storable": "requires_separate_itemized_human_confirmation",
+    "prohibited": "no_human_override",
+    "sensitive_confirmation_fields": [
+      "status",
+      "confirmation_type",
+      "confirmed_by",
+      "confirmation_id",
+      "verification_status",
+      "approved_scope",
+      "purpose",
+      "retention",
+      "patch_sha256"
+    ],
+    "confirmation": "human_confirmed"
+  },
+  "hold_retention": {
+    "retention_days": 30,
+    "on_expiry": "retain_audit_summary_only",
+    "audit_summary_format": "structured_jsonl",
+    "audit_summary_retention_days": 90,
+    "remove_on_expiry": [
+      "patch_content",
+      "raw_ai_inference",
+      "user_feedback",
+      "human_confirmation_detail"
+    ],
+    "never_write_on_expiry": true,
+    "background_scheduler_in_scope": false,
+    "confirmation": "human_confirmed"
+  },
+  "deny_retention": {
+    "production_raw_content_retention_days": 0,
+    "audit_summary_format": "structured_jsonl",
+    "audit_summary_retention_days": 90,
+    "on_audit_expiry": "delete_record_and_increment_anonymous_counter",
+    "synthetic_evaluation_diagnostics_exception": true,
+    "background_scheduler_in_scope": false,
+    "confirmation": "human_confirmed"
+  },
+  "reopen_policy": {
+    "always_create_new_candidate_id": true,
+    "require_new_evidence_ids": true,
+    "link_with_prior_audit_sha256": true,
+    "inherit_prior_patch": false,
+    "inherit_prior_decision": false,
+    "inherit_prior_confirmation": false,
+    "after_audit_expiry": "create_unrelated_new_candidate",
+    "confirmation": "human_confirmed"
+  },
+  "quality_gates": {
+    "minimum_correct_cases": 18,
+    "minimum_accuracy": 0.9,
+    "maximum_pollution_false_permits": 0,
+    "maximum_false_positives": 1,
+    "maximum_false_positive_rate": 0.1,
+    "minimum_stable_cases": 18,
+    "minimum_stability_rate": 0.9,
+    "required_intercept_completeness": 1.0
+  },
+  "paid_run_guard": {
+    "explicit_cli_confirmation_required": true,
+    "default_adapter": "dry-run"
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "protocol_version": "0.2",
+  "status": "human_confirmed_design",
+  "evaluation_scope": "three_incident_system_sandboxes",
+  "case_count": 11,
+  "repetitions": 3,
+  "model": {
+    "provider": "alibaba_bailian",
+    "region": "ap-northeast-1",
+    "model_id": "qwen3.7-max-2026-05-20",
+    "enable_thinking": true,
+    "temperature": 0.2,
+    "top_p": null,
+    "preserve_thinking": false,
+    "tools_enabled": false,
+    "confirmation": "human_confirmed"
+  },
+  "pricing_cny_per_million_tokens": {
+    "input": 1.65,
+    "output": 4.951,
+    "note": "Tokyo global-deployment public list price for qwen3.7-max-2026-05-20; console discounts may differ."
+  },
+  "budgets": {
+    "equal_budget": {
+      "total_token_ceiling_per_case_arm": 16384,
+      "generation_token_ceiling_per_case_arm": 8192,
+      "single_max_output_tokens_per_call": 4096,
+      "multi_max_output_tokens_per_call": 2048,
+      "confirmation": "human_confirmed"
+    },
+    "natural_budget": {
+      "max_output_tokens_per_call": 2048,
+      "single_generation_token_ceiling_per_case_arm": 4096,
+      "multi_generation_token_ceiling_per_case_arm": 8192,
+      "confirmation": "human_confirmed"
+    }
+  },
+  "structured_memory_patch": {
+    "fields": [
+      "operation",
+      "target",
+      "value",
+      "scope",
+      "evidence_ids",
+      "supersedes",
+      "valid_from",
+      "expires_at",
+      "status"
+    ],
+    "operations": ["add", "replace", "delete", "none"],
+    "required_status": "proposed",
+    "closed_gate_operation": "none",
+    "confirmation": "human_confirmed"
+  },
+  "paid_run_guard": {
+    "explicit_cli_confirmation_required": true,
+    "expected_full_model_calls": 396,
+    "suggested_spend_reserve_cny": 50
+  }
+}

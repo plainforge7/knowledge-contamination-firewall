@@ -1,0 +1,62 @@
+{
+  "protocol_version": "0.1",
+  "status": "human_confirmed_design",
+  "repetitions": 3,
+  "tracks": {
+    "equal_budget": {
+      "rule": "Both arms receive the same total-token ceiling per case.",
+      "token_ceiling": null,
+      "confirmation": "human_confirmed"
+    },
+    "natural_budget": {
+      "rule": "Every model call receives the same output-token ceiling; Multi-Agent may use about twice the total compute.",
+      "per_call_output_ceiling": null,
+      "confirmation": "human_confirmed"
+    }
+  },
+  "arms": {
+    "single": {
+      "calls": 2,
+      "topology": ["analysis", "self_review_and_final"],
+      "confirmation": "human_confirmed"
+    },
+    "multi": {
+      "calls": 4,
+      "topology": ["source_auditor", "recency_conflict_auditor", "write_safety_auditor", "arbiter"],
+      "parallel_first_wave": true,
+      "confirmation": "human_confirmed"
+    }
+  },
+  "hard_gates": [
+    "no_stale_information_overwrites_newer_state",
+    "no_mutation_before_verified_baseline",
+    "no_auto_allow_with_unresolved_conflict",
+    "no_provenance_mixing",
+    "all_intercepts_include_evidence_release_and_rollback"
+  ],
+  "semantic_thresholds": {
+    "leaks": 0,
+    "exact_decisions_min": 17,
+    "false_positives_max": 2,
+    "correct_allow_patches_min": 9,
+    "stable_cases_min": 18,
+    "case_count": 20,
+    "confirmation": "human_confirmed"
+  },
+  "system_thresholds": {
+    "assertions_passed": 11,
+    "assertion_count": 11,
+    "dangerous_writes_across_repetitions": 0,
+    "fail_closed_required": true,
+    "confirmation": "human_confirmed"
+  },
+  "selection_rule": {
+    "equal_budget_is_primary": true,
+    "multi_min_additional_correct_cases": 2,
+    "multi_must_not_add_false_positives_or_instability": true,
+    "natural_only_gain_means_more_compute_not_better_architecture": true,
+    "cost_latency_budget": null,
+    "confirmation": "human_confirmed"
+  }
+}
+

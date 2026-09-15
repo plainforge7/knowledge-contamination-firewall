@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/knowledge-pollution-firewall/gold-set.schema.json",
+  "title": "Knowledge Pollution Firewall Gold Case",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["case_id", "title", "category", "difficulty", "incident_mapping", "query", "target_context", "setup", "expected", "scoring"],
+  "properties": {
+    "case_id": {"type": "string", "pattern": "^GS-[0-9]{3}$"},
+    "title": {"type": "string", "minLength": 1},
+    "category": {"enum": ["clean_allow", "incorrect_information", "stale_information", "post_correction_old_information", "stale_snapshot_overwrite", "realtime_evidence_priority"]},
+    "difficulty": {"enum": ["easy", "medium", "hard"]},
+    "incident_mapping": {"type": "array", "items": {"type": "object", "required": ["issue", "mechanism"], "properties": {"issue": {"type": "string", "format": "uri"}, "mechanism": {"type": "string"}}, "additionalProperties": false}},
+    "query": {"type": "string", "minLength": 1},
+    "target_context": {"type": "object", "required": ["project", "version", "as_of"], "properties": {"project": {"type": "string"}, "version": {"type": "string"}, "as_of": {"type": "string"}, "environment": {"type": "string"}, "namespace": {"type": "string"}}, "additionalProperties": false},
+    "setup": {"type": "object", "required": ["clean_knowledge_ids", "injected_items", "stale_candidate_ids", "events", "realtime_evidence"], "properties": {"clean_knowledge_ids": {"type": "array", "items": {"type": "string"}}, "injected_items": {"type": "array", "items": {"type": "object"}}, "stale_candidate_ids": {"type": "array", "items": {"type": "string"}}, "events": {"type": "array", "items": {"type": "object"}}, "realtime_evidence": {"type": "array", "items": {"type": "object"}}}, "additionalProperties": false},
+    "expected": {"type": "object", "required": ["decision", "answer_action", "answer", "required_evidence_ids", "forbidden_evidence_ids", "answer_assertions", "required_reason_codes"], "properties": {"decision": {"enum": ["allow", "quarantine", "exclude_as_stale", "replace_with_correction", "reject_stale_write", "prefer_realtime"]}, "answer_action": {"enum": ["answer", "refuse"]}, "answer": {"type": "string"}, "required_evidence_ids": {"type": "array", "items": {"type": "string"}, "minItems": 1}, "forbidden_evidence_ids": {"type": "array", "items": {"type": "string"}}, "answer_assertions": {"type": "array", "items": {"type": "object"}, "minItems": 1}, "required_reason_codes": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false},
+    "scoring": {"type": "object", "required": ["decision", "answer", "required_evidence", "forbidden_evidence_absent"], "properties": {"decision": {"type": "number", "minimum": 0, "maximum": 1}, "answer": {"type": "number", "minimum": 0, "maximum": 1}, "required_evidence": {"type": "number", "minimum": 0, "maximum": 1}, "forbidden_evidence_absent": {"type": "number", "minimum": 0, "maximum": 1}}, "additionalProperties": false}
+  }
+}

@@ -1,0 +1,25 @@
+# macOS 系统文件
+.DS_Store
+
+# 运行日志（可能包含调试信息，不适合公开仓库）
+run_log_*.txt
+
+# 评测运行产生的 checkpoint 和真实结果（含调用细节，体积可能较大，且非源代码）
+outputs/checkpoints/
+outputs/*.json
+
+# 临时诊断脚本（这次调试过程中产生的一次性脚本）
+diagnose_*.py
+apply_patch*.py
+apply_retry_patch*.py
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 环境变量文件（如果之后创建 .env 之类的文件）
+.env
+.env.*
+
+# 手动创建的本地备份包
+outputs/backup_*/
