@@ -25,7 +25,7 @@
 
 ## 当前版本：v0.3
 
-v0.3 是当前维护的版本，位于 `controlled_compare/compare_v0_3.py` 与 `controlled_compare/firewall_v0_3.py`。v0.1（`compare.py`）、v0.2（`compare_v0_2.py`）为历史迭代，仅保留用于事故复现回归测试（见 `tests/test_incident_reproductions.py`），不建议作为新接入的起点。
+v0.3 是当前维护的版本，位于 `controlled_compare/compare_v0_3.py` 与 `controlled_compare/firewall_v0_3.py`。v0.1（`compare.py`）、v0.2（`compare_v0_2.py`）为更早的迭代版本，v0.3 会从 v0.1 中复用少量通用工具函数（`CallResult`、`_estimate_tokens`），三者是否会继续并行维护尚未最终确定，请以本仓库最新提交为准。
 
 ### 快速开始（不调用模型，免费）
 
