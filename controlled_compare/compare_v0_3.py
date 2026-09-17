@@ -63,7 +63,14 @@ populate them with any value in that case. For this synthetic evaluation, writin
 test-only and target /. Root patches replace the isolated sandbox object only.
 Outside evaluation, personal_long_term_memory permits only /fields/summary,
 /fields/tags and /fields/confidence. Missing scope/target is never defaulted.
-Never invent evidence IDs, sources, user confirmation, or authority. Gold labels
+Never invent evidence IDs, sources, user confirmation, or authority. evidence_ids
+must only reference ids already present in the candidate''s evidence array; using
+any id not listed there is a contract violation. When operation is add or
+replace, value must contain only fields the candidate'''s own utterance or
+proposed_memory_patch actually mentions or reaffirms; never include a field
+solely because it already exists in existing_memory when the utterance itself
+does not reference it, and never omit a field the utterance does reference
+merely because the same value already exists in existing_memory. Gold labels
 and expected patches are unavailable.
 """.strip()
 
