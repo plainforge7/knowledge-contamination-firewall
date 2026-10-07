@@ -13,6 +13,7 @@ from controlled_compare.compare_v0_3 import (
     _execute_route,
     V03BailianAdapter,
     V03DryRunAdapter,
+    audit_records,
     compact_expired_hold_run,
     load_config,
     load_dataset,
@@ -822,6 +823,22 @@ class FirewallV03Tests(unittest.TestCase):
                 result["scores"][arm]["hard_gates"]["sandbox_execution_failures"],
                 0,
             )
+
+    def test_audit_records_export_lightweight_jsonl_rows(self) -> None:
+        result = run_comparison(
+            V03DryRunAdapter(), dataset="semantic-gold", smoke=True
+        )
+        records = audit_records(result)
+        self.assertEqual(len(records), 3)
+        first = records[0]
+        self.assertEqual(first["protocol_version"], result["protocol_version"])
+        self.assertEqual(first["dataset"], "semantic-gold")
+        self.assertEqual(first["case_id"], result["raw_runs"][0]["case_id"])
+        self.assertIn("audit_trace", first)
+        self.assertIn("decision", first["audit_trace"])
+        self.assertNotIn("firewall", first)
+        self.assertNotIn("calls", first)
+        self.assertNotIn("ai_raw_output", first)
 
 
 class PatchWhitelistBoundaryTests(unittest.TestCase):

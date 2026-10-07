@@ -39,6 +39,19 @@ v0.4 的第一步是在每个 `run_arm` 结果中新增 `audit_trace`。它不�
 - 模型调用：stage、tokens、latency、cost、request_id；
 - 运行成本：成功调用数、总 tokens、费用是否已知、预算账本摘要。
 
+CLI 会同时写完整结果 JSON 和轻量审计 JSONL。也可以显式指定审计输出：
+
+```bash
+python3 -m controlled_compare.compare_v0_3 \
+  --adapter dry-run \
+  --dataset semantic-gold \
+  --smoke \
+  --audit-output outputs/audit_trace_smoke.jsonl
+```
+
+JSONL 每行对应一个 run，只包含 case、arm、可用性和 `audit_trace`，
+不会复制完整 `firewall`、模型原始输出或完整调用记录。
+
 这一步对应岗位能力中的 observability / debugging / auditability：真实
 AI 系统不能只给出最后答案，还要能解释每一步为什么发生。
 

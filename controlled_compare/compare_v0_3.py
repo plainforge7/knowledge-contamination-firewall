@@ -1223,6 +1223,34 @@ def _atomic_write_json(path: Path, value: dict[str, Any]) -> None:
     temporary.replace(path)
 
 
+def audit_records(result: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return one lightweight audit JSON object per run."""
+    return [
+        {
+            "protocol_version": result["protocol_version"],
+            "dataset": result["dataset"],
+            "evaluation_valid": result["evaluation_valid"],
+            "case_id": run["case_id"],
+            "repetition": run.get("repetition"),
+            "arm": run["arm"],
+            "response_usable": run["response_usable"],
+            "audit_trace": run["audit_trace"],
+        }
+        for run in result["raw_runs"]
+    ]
+
+
+def _atomic_write_jsonl(path: Path, records: list[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    lines = [
+        json.dumps(record, ensure_ascii=False, sort_keys=True)
+        for record in records
+    ]
+    temporary.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+    temporary.replace(path)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--adapter", choices=("dry-run", "bailian"), default="dry-run")
@@ -1232,6 +1260,7 @@ def main() -> None:
     parser.add_argument("--confirm-paid-run", action="store_true")
     parser.add_argument("--checkpoint", type=Path)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--audit-output", type=Path)
     parser.add_argument("--model-command")
     args = parser.parse_args()
 
@@ -1252,6 +1281,7 @@ def main() -> None:
     adapter_suffix = args.adapter.replace("-", "_")
     checkpoint_path = args.checkpoint or ROOT / "outputs" / "checkpoints" / f"controlled_compare_v0_3_{adapter_suffix}_{suffix}.jsonl"
     output_path = args.output or ROOT / "outputs" / f"controlled_compare_v0_3_{args.adapter.replace('-', '_')}_{suffix}.json"
+    audit_output_path = args.audit_output or ROOT / "outputs" / f"controlled_compare_v0_4_audit_trace_{adapter_suffix}_{suffix}.jsonl"
     if checkpoint_path.exists() and not args.resume:
         parser.error(f"checkpoint already exists; use --resume or choose --checkpoint: {checkpoint_path}")
     result = run_comparison(
@@ -1263,7 +1293,9 @@ def main() -> None:
         show_progress=args.adapter == "bailian",
     )
     _atomic_write_json(output_path, result)
+    _atomic_write_jsonl(audit_output_path, audit_records(result))
     print(f"Wrote {output_path}")
+    print(f"Wrote {audit_output_path}")
 
 
 if __name__ == "__main__":
