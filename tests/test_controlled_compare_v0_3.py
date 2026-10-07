@@ -717,6 +717,43 @@ class FirewallV03Tests(unittest.TestCase):
         self.assertEqual(run["firewall"]["write_decision"], "hold")
         self.assertEqual(run["firewall"]["audit_status"], "blocked_token_budget")
         self.assertEqual(run["firewall"]["execution"]["destination"], "none")
+        self.assertEqual(
+            run["audit_trace"]["failure"]["category"],
+            "policy_budget_or_deadline",
+        )
+
+    def test_audit_trace_summarizes_successful_sandbox_write(self) -> None:
+        run = run_arm(
+            V03DryRunAdapter(), self.config, self.case("PM-001"), "single"
+        )
+        trace = run["audit_trace"]
+        self.assertEqual(trace["trace_version"], "0.4.0-audit-trace")
+        self.assertEqual(trace["decision"]["final"], "permit")
+        self.assertEqual(trace["failure"]["category"], "none")
+        self.assertEqual(trace["execution"]["planned_destination"], "sandbox")
+        self.assertTrue(trace["execution"]["attempted"])
+        self.assertTrue(trace["execution"]["committed"])
+        self.assertEqual(trace["operations"]["successful_calls"], 1)
+        self.assertEqual(trace["model_calls"][0]["stage"], "single_recommendation")
+
+    def test_audit_trace_marks_infrastructure_failure_retriable(self) -> None:
+        run = run_arm(
+            FailFirstAdapter(), self.config, self.case("PM-001"), "single"
+        )
+        trace = run["audit_trace"]
+        self.assertEqual(trace["failure"]["category"], "infrastructure")
+        self.assertTrue(trace["failure"]["retriable"])
+        self.assertEqual(trace["decision"]["final"], "hold")
+        self.assertEqual(trace["execution"]["planned_destination"], "none")
+
+    def test_audit_trace_marks_model_contract_failure_non_retriable(self) -> None:
+        run = run_arm(
+            MalformedAdapter(), self.config, self.case("PM-001"), "single"
+        )
+        trace = run["audit_trace"]
+        self.assertEqual(trace["failure"]["category"], "model_contract")
+        self.assertFalse(trace["failure"]["retriable"])
+        self.assertEqual(trace["decision"]["audit_status"], "blocked_model_contract")
 
     def test_injected_transaction_failure_restores_snapshot(self) -> None:
         patch = candidate_patch(self.case("PM-001"))

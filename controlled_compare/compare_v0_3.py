@@ -363,6 +363,103 @@ def _usage(
     }
 
 
+def _classify_failure(
+    firewall: dict[str, Any],
+    infrastructure_errors: list[str],
+    policy_errors: list[str],
+    execution_result: dict[str, Any],
+) -> dict[str, Any]:
+    if infrastructure_errors:
+        return {"category": "infrastructure", "retriable": True}
+    if firewall["errors"]["model_contract"]:
+        return {"category": "model_contract", "retriable": False}
+    if policy_errors:
+        return {"category": "policy_budget_or_deadline", "retriable": False}
+    if execution_result.get("error"):
+        return {"category": "execution_route", "retriable": False}
+    return {"category": "none", "retriable": False}
+
+
+def build_audit_trace(
+    *,
+    arm: str,
+    route: str,
+    triggers: list[str],
+    firewall: dict[str, Any],
+    execution_result: dict[str, Any],
+    calls: list[dict[str, Any]],
+    usage: dict[str, Any],
+    budget_snapshot: dict[str, Any],
+    infrastructure_errors: list[str],
+    policy_errors: list[str],
+) -> dict[str, Any]:
+    """Summarize one candidate run for debugging and human review."""
+    failure = _classify_failure(
+        firewall, infrastructure_errors, policy_errors, execution_result
+    )
+    return {
+        "trace_version": "0.4.0-audit-trace",
+        "arm": arm,
+        "route": route,
+        "multi_trigger_reasons": list(triggers),
+        "decision": {
+            "base": firewall["rule_decision"]["base_decision"],
+            "final": firewall["write_decision"],
+            "authority": firewall["rule_decision"]["authority"],
+            "audit_status": firewall["audit_status"],
+        },
+        "failure": failure,
+        "rule_ids": [
+            rule["rule_id"]
+            for rule in firewall["rule_decision"]["matched_rules"]
+            if isinstance(rule, dict) and rule.get("rule_id")
+        ],
+        "patch": {
+            "origin": firewall["patch_origin"],
+            "operation": firewall["patch"].get("operation"),
+            "scope": firewall["patch"].get("scope"),
+            "target": firewall["patch"].get("target"),
+            "sha256": firewall["execution"]["patch_sha256"],
+            "location_reason": (
+                firewall["patch_location_check"]["reason"]
+                if firewall.get("patch_location_check")
+                else None
+            ),
+        },
+        "execution": {
+            "planned_destination": firewall["execution"]["destination"],
+            "planned_reason": firewall["execution"]["reason"],
+            "attempted": execution_result.get("attempted", False),
+            "committed": execution_result.get("committed", False),
+            "actual_destination": execution_result.get("destination"),
+            "error": execution_result.get("error"),
+        },
+        "model_calls": [
+            {
+                "stage": call["stage"],
+                "tokens": call["total_tokens"],
+                "latency_ms": call["latency_ms"],
+                "cost_cny": call["cost_cny"],
+                "request_id": call.get("request_id"),
+            }
+            for call in calls
+        ],
+        "operations": {
+            "successful_calls": usage["successful_calls"],
+            "total_tokens": usage["total_tokens"],
+            "cost_cny": usage["cost_cny"],
+            "cost_cny_known": usage["cost_cny_known"],
+            "accounted_tokens": budget_snapshot["accounted_tokens"],
+            "usage_unknown_attempts": budget_snapshot["usage_unknown_attempts"],
+        },
+        "errors": {
+            "infrastructure": list(infrastructure_errors),
+            "model_contract": list(firewall["errors"]["model_contract"]),
+            "policy": list(policy_errors),
+        },
+    }
+
+
 def _force_policy_hold(
     result: dict[str, Any], reason: str, audit_status: str
 ) -> None:
@@ -604,6 +701,18 @@ def run_arm(
         not infrastructure_errors
         and (arm == "baseline" or not firewall["errors"]["model_contract"])
     )
+    audit_trace = build_audit_trace(
+        arm=arm,
+        route=route,
+        triggers=triggers,
+        firewall=firewall,
+        execution_result=execution_result,
+        calls=calls,
+        usage=usage,
+        budget_snapshot=budget_snapshot,
+        infrastructure_errors=infrastructure_errors,
+        policy_errors=policy_errors,
+    )
     return {
         "arm": arm,
         "case_id": case["case_id"],
@@ -613,6 +722,7 @@ def run_arm(
         "execution_result": execution_result,
         "calls": calls,
         "usage": usage,
+        "audit_trace": audit_trace,
         "budget": {"total_token_ceiling": ceiling, "ledger": budget_snapshot},
         "budget_compliant": (
             not policy_errors

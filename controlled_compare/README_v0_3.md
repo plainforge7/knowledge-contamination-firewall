@@ -24,6 +24,24 @@ v0.1、v0.2、冻结结果和 Gold 标签均未修改。
 - `config_v0_3.json`：模型、预算、延迟目标和质量门。
 - `tests/test_controlled_compare_v0_3.py`：v0.3 免费安全与回归测试。
 
+## v0.4 起点：审计 Trace
+
+v0.4 的第一步是在每个 `run_arm` 结果中新增 `audit_trace`。它不改变
+防火墙决策、Patch 准入或执行路由，只把已有运行材料压缩成一个便于调试、
+人审和报告展示的观察层。
+
+`audit_trace` 目前汇总：
+
+- 决策链路：规则基线、最终决定、决策权威、审计状态；
+- 失败归类：`none / infrastructure / model_contract /
+  policy_budget_or_deadline / execution_route`，并标记是否适合续跑；
+- Patch 与路由：来源、操作、scope、target、哈希、计划和实际执行结果；
+- 模型调用：stage、tokens、latency、cost、request_id；
+- 运行成本：成功调用数、总 tokens、费用是否已知、预算账本摘要。
+
+这一步对应岗位能力中的 observability / debugging / auditability：真实
+AI 系统不能只给出最后答案，还要能解释每一步为什么发生。
+
 ## 免费本地验证
 
 运行全部测试：
