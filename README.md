@@ -65,6 +65,12 @@ python3 -m controlled_compare.compare_v0_3 \
 
 v0.3 是当前维护的版本，位于 `controlled_compare/compare_v0_3.py` 与 `controlled_compare/firewall_v0_3.py`。v0.1（`compare.py`）、v0.2（`compare_v0_2.py`）为更早的迭代版本，v0.3 会从 v0.1 中复用少量通用工具函数（`CallResult`、`_estimate_tokens`），三者是否会继续并行维护尚未最终确定，请以本仓库最新提交为准。
 
+## v0.4 审计数据层
+
+审计 JSONL 导入时，`import_jsonl` 返回本次实际新增的行数。唯一键
+（`protocol_version`、`dataset`、`case_id`、`repetition`、`arm`）重复时会覆盖旧记录，
+并通过警告和命令行提示“覆盖了 N 条重复记录”；同一文件再次导入同一个数据库时返回 `0`。
+
 ## 目录结构
 
 - `controlled_compare/` — 核心评测与防火墙逻辑（v0.1/v0.2/v0.3 三代并存）
