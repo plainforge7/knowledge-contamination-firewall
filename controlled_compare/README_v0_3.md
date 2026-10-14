@@ -55,6 +55,21 @@ JSONL 每行对应一个 run，只包含 case、arm、可用性和 `audit_trace`
 这一步对应岗位能力中的 observability / debugging / auditability：真实
 AI 系统不能只给出最后答案，还要能解释每一步为什么发生。
 
+## v0.4 审计数据层
+
+JSONL 是不可变交换与留档格式；本地复核可将其导入 SQLite，再导出
+Excel 兼容的 UTF-8 CSV。数据库是 JSONL 的派生索引，不是权威写入源：
+
+```bash
+python3 -m controlled_compare.audit_store import \
+  outputs/audit_trace_smoke.jsonl outputs/audit.db
+python3 -m controlled_compare.audit_store csv \
+  outputs/audit.db outputs/audit.csv
+```
+
+首版字段覆盖决策、失败分类、执行路由、调用量、成本和原始审计 Trace，
+为后续固定安全运营视图提供稳定数据入口。
+
 ## 免费本地验证
 
 运行全部测试：
