@@ -78,6 +78,19 @@ python3 -m controlled_compare.compare_v0_3 \
 
 传输层内置最多 3 次网络错误重试（间隔 2 秒），契约类错误（如 API key 类型不对）不会重试。
 
+## 相关工作与定位
+
+记忆投毒（memory poisoning）与 RAG 投毒在 2025-2026 年成为活跃方向，以下是与本项目最接近的开源与学术工作：
+
+| 项目 | 定位 | 与本项目的差异 |
+| --- | --- | --- |
+| [OWASP Agent Memory Guard](https://github.com/OWASP/www-project-agent-memory-guard) | 记忆写入前的 5 层实时校验库（pip 包，宣称检出率 98.7%） | 提供检测组件；本项目是**评测驱动**的完整管线，含 baseline / single / multi 三臂受控对比与验收线 |
+| [Aigis](https://github.com/gaebalai/aigis-kr) | 确定性 Agent 防火墙，含记忆写入过滤器 | 同样坚持确定性规则、不用 LLM 做裁判；其重心在 MCP 工具调用层，记忆只是其中一层 |
+| [Mnemosyne](https://github.com/TeleAI-UAGI/Awesome-Agent-Memory) | 记忆读写网关：溯源信任分级 + 哈希链审计 | 思路接近本项目的溯源与审计；本项目额外提供对照实验证据与人工复核队列 |
+| [Veritensor](https://github.com/arsbr/Veritensor) | RAG 入库前静态扫描（投毒 / 注入 / PII） | 管「入库前」；本项目管「写入长期记忆的准入决策」及其全生命周期 |
+
+学术侧，TMA-NM（[arXiv:2606.24322](https://arxiv.org/abs/2606.24322)，2026-06）从理论上证明：纯内容检测与纯溯源防御在「来源洗白」（laundering）攻击下都不可信，**写入时必须绑定来源**——这与本项目「AI 不掌握最终写入权限、由确定性规则裁决」的设计原则方向一致。攻击侧可参考 MPBench（记忆投毒基准）与 GhostWriter（针对 Mem0 / Letta 等主流记忆框架的投毒攻击，注入成功率约 98%）。
+
 ## 目录结构
 
 - `controlled_compare/` — 核心评测与防火墙逻辑（v0.1/v0.2/v0.3 三代并存）
