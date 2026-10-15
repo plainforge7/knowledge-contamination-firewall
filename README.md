@@ -40,8 +40,7 @@ JSONL 到 SQLite/CSV 的本地审计数据层。核心运行器仍位于
 v0.1（`compare.py`）、v0.2（`compare_v0_2.py`）为更早的迭代版本。
 
 审计 JSONL 导入时，`import_jsonl` 返回本次实际新增的行数。唯一键
-（`protocol_version`、`dataset`、`case_id`、`repetition`、`arm`）重复时会覆盖旧记录，
-并通过警告和命令行提示“覆盖了 N 条重复记录”；同一文件再次导入同一个数据库时返回 `0`。
+（`protocol_version`、`execution_id`、`dataset`、`evaluation_valid`、`case_id`、`repetition`、`arm`）相同的行，内容完全一致时会被跳过（重复导入同一个文件返回 `0`）；内容不一致时整个导入回滚，并报 `AuditConflictError`。只有显式传入 `--overwrite` 才会替换旧行，并提示“覆盖了 N 条重复记录”。
 
 v0.5-v0.8 在不改变 v0.3 安全门的前提下补充了隔离记忆生命周期、污染回归
 评测、人工复核队列和条件化 Agent 工作流；v0.9 的求职版项目说明见

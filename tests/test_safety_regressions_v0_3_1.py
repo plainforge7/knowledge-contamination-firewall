@@ -19,7 +19,7 @@ from unittest.mock import patch
 from controlled_compare import bailian_adapter_v0_3 as bailian_v0_3
 from controlled_compare import compare_v0_3 as runner_v0_3
 from controlled_compare import firewall_v0_3 as firewall
-from controlled_compare.audit_store import import_jsonl, init_db
+from controlled_compare.audit_store import AuditConflictError, import_jsonl, init_db
 from controlled_compare.memory_store_v0_5 import MemoryStore
 from controlled_compare.review_queue_v0_7 import ReviewQueue
 
@@ -141,8 +141,72 @@ class AuditKeyTests(unittest.TestCase):
             _audit_record(evaluation_valid=True, execution_id="paid", final="permit"),
         )
         self.assertEqual(import_jsonl(export, db), 1)
+        self.assertEqual(import_jsonl(export, db), 0)
+        self.assertEqual(self._row_count(db), 1)
+
+    def test_conflicting_row_with_same_key_is_refused_and_nothing_changes(self) -> None:
+        db = self.dir / "audit.db"
+        first = _write_jsonl(
+            self.dir / "first.jsonl",
+            _audit_record(evaluation_valid=True, execution_id="paid", final="permit"),
+        )
+        rerun = _write_jsonl(
+            self.dir / "rerun.jsonl",
+            _audit_record(evaluation_valid=True, execution_id="paid", final="hold"),
+        )
+        self.assertEqual(import_jsonl(first, db), 1)
+        with self.assertRaises(AuditConflictError):
+            import_jsonl(rerun, db)
+        connection = sqlite3.connect(db)
+        try:
+            decisions = connection.execute("SELECT final_decision FROM audit_runs").fetchall()
+        finally:
+            connection.close()
+        self.assertEqual(decisions, [("permit",)])
+
+    def test_conflict_anywhere_in_a_file_rolls_back_the_whole_import(self) -> None:
+        db = self.dir / "audit.db"
+        seed = _write_jsonl(
+            self.dir / "seed.jsonl",
+            _audit_record(evaluation_valid=True, execution_id="paid", final="permit"),
+        )
+        mixed = _write_jsonl(
+            self.dir / "mixed.jsonl",
+            _audit_record(evaluation_valid=True, execution_id="new", final="permit"),
+            _audit_record(evaluation_valid=True, execution_id="paid", final="hold"),
+        )
+        import_jsonl(seed, db)
+        with self.assertRaises(AuditConflictError):
+            import_jsonl(mixed, db)
+        self.assertEqual(self._row_count(db), 1)
+
+    def test_overwrite_replaces_conflicting_row_and_warns(self) -> None:
+        db = self.dir / "audit.db"
+        first = _write_jsonl(
+            self.dir / "first.jsonl",
+            _audit_record(evaluation_valid=True, execution_id="paid", final="permit"),
+        )
+        rerun = _write_jsonl(
+            self.dir / "rerun.jsonl",
+            _audit_record(evaluation_valid=True, execution_id="paid", final="hold"),
+        )
+        import_jsonl(first, db)
         with self.assertWarns(UserWarning):
-            self.assertEqual(import_jsonl(export, db), 0)
+            self.assertEqual(import_jsonl(rerun, db, overwrite=True), 0)
+        connection = sqlite3.connect(db)
+        try:
+            decisions = connection.execute("SELECT final_decision FROM audit_runs").fetchall()
+        finally:
+            connection.close()
+        self.assertEqual(decisions, [("hold",)])
+
+    def test_null_repetition_rows_are_deduplicated_too(self) -> None:
+        db = self.dir / "audit.db"
+        record = _audit_record(evaluation_valid=True, execution_id="paid", final="permit")
+        record["repetition"] = None
+        export = _write_jsonl(self.dir / "null.jsonl", record)
+        self.assertEqual(import_jsonl(export, db), 1)
+        self.assertEqual(import_jsonl(export, db), 0)
         self.assertEqual(self._row_count(db), 1)
 
     def test_pre_execution_id_database_is_refused(self) -> None:

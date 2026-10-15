@@ -94,37 +94,79 @@ def init_db(path: Path) -> sqlite3.Connection:
     return connection
 
 
-def import_jsonl(jsonl_path: Path, db_path: Path) -> int:
-    records = [
+INSERT_COLUMNS = (
+    "protocol_version", "dataset", "evaluation_valid", "execution_id", "case_id",
+    "repetition", "arm", "response_usable", "trace_version", "route", "base_decision",
+    "final_decision", "audit_status", "failure_category", "failure_retriable",
+    "planned_destination", "actual_destination", "attempted", "committed",
+    "total_tokens", "successful_calls", "cost_cny", "cost_cny_known", "raw_trace",
+)
+UNIQUE_KEY_COLUMNS = (
+    "protocol_version", "execution_id", "dataset", "evaluation_valid",
+    "case_id", "repetition", "arm",
+)
+_INSERT_SQL = (
+    f"INSERT INTO audit_runs ({', '.join(INSERT_COLUMNS)}) "
+    f"VALUES ({', '.join('?' for _ in INSERT_COLUMNS)})"
+)
+_KEY_MATCH_SQL = " AND ".join(f"{column} IS ?" for column in UNIQUE_KEY_COLUMNS)
+
+
+class AuditConflictError(ValueError):
+    """Same unique key, different content: refuse rather than replace evidence."""
+
+
+def _read_records(jsonl_path: Path) -> list[dict[str, Any]]:
+    return [
         json.loads(line)
         for line in jsonl_path.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
+
+
+def import_jsonl(jsonl_path: Path, db_path: Path, *, overwrite: bool = False) -> int:
+    """Import a JSONL export atomically.
+
+    Identical rows already present are skipped, so re-importing an export is a
+    no-op. A row whose unique key exists with different content raises
+    AuditConflictError and the whole import is rolled back. Only ``overwrite=True``
+    replaces such rows, and it reports how many were replaced.
+    Returns the number of newly inserted rows.
+    """
+    rows = [flatten_record(record) for record in _read_records(jsonl_path)]
     connection = init_db(db_path)
-    before_count = connection.execute(
-        "SELECT COUNT(*) FROM audit_runs"
-    ).fetchone()[0]
-    with connection:
-        connection.executemany(
-            """INSERT OR REPLACE INTO audit_runs (
-                protocol_version, dataset, evaluation_valid, execution_id, case_id, repetition,
-                arm, response_usable, trace_version, route, base_decision,
-                final_decision, audit_status, failure_category, failure_retriable,
-                planned_destination, actual_destination, attempted, committed,
-                total_tokens, successful_calls, cost_cny, cost_cny_known, raw_trace
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (flatten_record(record) for record in records),
-        )
-    after_count = connection.execute(
-        "SELECT COUNT(*) FROM audit_runs"
-    ).fetchone()[0]
-    count = after_count - before_count
-    overwritten_count = len(records) - count
-    if overwritten_count > 0:
-        message = f"覆盖了 {overwritten_count} 条重复记录"
-        warnings.warn(message, UserWarning, stacklevel=2)
-    connection.close()
-    return count
+    inserted = 0
+    replaced = 0
+    try:
+        with connection:
+            for row in rows:
+                key = dict(zip(INSERT_COLUMNS, row))
+                key_values = [key[column] for column in UNIQUE_KEY_COLUMNS]
+                existing = connection.execute(
+                    f"SELECT {', '.join(INSERT_COLUMNS)} FROM audit_runs WHERE {_KEY_MATCH_SQL}",
+                    key_values,
+                ).fetchone()
+                if existing is None:
+                    connection.execute(_INSERT_SQL, row)
+                    inserted += 1
+                elif tuple(existing) == row:
+                    continue
+                elif overwrite:
+                    connection.execute(f"DELETE FROM audit_runs WHERE {_KEY_MATCH_SQL}", key_values)
+                    connection.execute(_INSERT_SQL, row)
+                    replaced += 1
+                else:
+                    raise AuditConflictError(
+                        "conflicting audit row for "
+                        f"case_id={key['case_id']!r} arm={key['arm']!r} "
+                        f"repetition={key['repetition']!r} execution_id={key['execution_id']!r}; "
+                        "re-run with overwrite=True (--overwrite) to replace it"
+                    )
+    finally:
+        connection.close()
+    if replaced:
+        warnings.warn(f"覆盖了 {replaced} 条重复记录", UserWarning, stacklevel=2)
+    return inserted
 
 
 def export_csv(db_path: Path, csv_path: Path) -> int:
@@ -443,6 +485,7 @@ def main() -> None:
     import_parser = subparsers.add_parser("import")
     import_parser.add_argument("jsonl", type=Path)
     import_parser.add_argument("db", type=Path)
+    import_parser.add_argument("--overwrite", action="store_true")
     csv_parser = subparsers.add_parser("csv")
     csv_parser.add_argument("db", type=Path)
     csv_parser.add_argument("output", type=Path)
@@ -454,7 +497,7 @@ def main() -> None:
     dashboard_parser.add_argument("output", type=Path)
     args = parser.parse_args()
     if args.command == "import":
-        count = import_jsonl(args.jsonl, args.db)
+        count = import_jsonl(args.jsonl, args.db, overwrite=args.overwrite)
         print(f"Processed {count} audit rows")
     elif args.command == "csv":
         count = export_csv(args.db, args.output)
