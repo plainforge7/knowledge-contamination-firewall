@@ -14,7 +14,7 @@ import math
 import sqlite3
 import warnings
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 
 SCHEMA = """
@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS audit_runs (
     protocol_version TEXT NOT NULL,
     dataset TEXT NOT NULL,
     evaluation_valid INTEGER NOT NULL,
+    execution_id TEXT NOT NULL DEFAULT '',
     case_id TEXT NOT NULL,
     repetition INTEGER,
     arm TEXT NOT NULL,
@@ -43,7 +44,7 @@ CREATE TABLE IF NOT EXISTS audit_runs (
     cost_cny REAL,
     cost_cny_known INTEGER NOT NULL,
     raw_trace TEXT NOT NULL,
-    UNIQUE(protocol_version, dataset, case_id, repetition, arm)
+    UNIQUE(protocol_version, execution_id, dataset, evaluation_valid, case_id, repetition, arm)
 );
 CREATE INDEX IF NOT EXISTS idx_audit_runs_decision ON audit_runs(final_decision);
 CREATE INDEX IF NOT EXISTS idx_audit_runs_case ON audit_runs(case_id);
@@ -66,7 +67,7 @@ def flatten_record(record: dict[str, Any]) -> tuple[Any, ...]:
     operations = trace["operations"]
     return (
         record["protocol_version"], record["dataset"], _bool(record["evaluation_valid"]),
-        record["case_id"], record.get("repetition"), record["arm"],
+        record.get("execution_id", ""), record["case_id"], record.get("repetition"), record["arm"],
         _bool(record["response_usable"]), trace["trace_version"], trace.get("route"),
         decision.get("base"), decision.get("final"), decision.get("audit_status"),
         failure.get("category"), _bool(failure.get("retriable")),
@@ -81,6 +82,14 @@ def flatten_record(record: dict[str, Any]) -> tuple[Any, ...]:
 def init_db(path: Path) -> sqlite3.Connection:
     path.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(path)
+    # CREATE TABLE IF NOT EXISTS does not migrate an existing table. Refuse to
+    # write into an old-key database instead of silently mixing runs again.
+    columns = {row[1] for row in connection.execute("PRAGMA table_info(audit_runs)")}
+    if columns and "execution_id" not in columns:
+        connection.close()
+        raise RuntimeError(
+            f"{path} uses the pre-execution_id audit schema; rebuild it from the JSONL export"
+        )
     connection.executescript(SCHEMA)
     return connection
 
@@ -98,12 +107,12 @@ def import_jsonl(jsonl_path: Path, db_path: Path) -> int:
     with connection:
         connection.executemany(
             """INSERT OR REPLACE INTO audit_runs (
-                protocol_version, dataset, evaluation_valid, case_id, repetition,
+                protocol_version, dataset, evaluation_valid, execution_id, case_id, repetition,
                 arm, response_usable, trace_version, route, base_decision,
                 final_decision, audit_status, failure_category, failure_retriable,
                 planned_destination, actual_destination, attempted, committed,
                 total_tokens, successful_calls, cost_cny, cost_cny_known, raw_trace
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (flatten_record(record) for record in records),
         )
     after_count = connection.execute(
@@ -114,7 +123,6 @@ def import_jsonl(jsonl_path: Path, db_path: Path) -> int:
     if overwritten_count > 0:
         message = f"覆盖了 {overwritten_count} 条重复记录"
         warnings.warn(message, UserWarning, stacklevel=2)
-        print(message)
     connection.close()
     return count
 

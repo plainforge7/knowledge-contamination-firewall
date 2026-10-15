@@ -5,9 +5,8 @@ import tempfile
 import unittest
 from copy import deepcopy
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
-from controlled_compare.compare import CallResult
 from controlled_compare.bailian_adapter_v0_3 import call_bailian_once
 from controlled_compare.compare_v0_3 import (
     _execute_route,
@@ -552,7 +551,7 @@ class FirewallV03Tests(unittest.TestCase):
         )
         self.assertEqual(request["metadata"]["stage"], "single_recommendation")
 
-    def test_bailian_transport_retries_on_transport_error_then_succeeds(self) -> None:
+    def test_bailian_transport_makes_no_hidden_retries_on_transport_error(self) -> None:
         import urllib.error
         from controlled_compare.bailian_adapter_v0_3 import call_bailian_once
 
@@ -593,14 +592,14 @@ class FirewallV03Tests(unittest.TestCase):
                 raise urllib.error.URLError("simulated transient failure")
             return FakeResponse()
 
+        # v0.3 has no hidden transport retries: one reservation, one HTTP request.
         with patch(
             "controlled_compare.bailian_adapter_v0_3.urllib.request.urlopen",
             side_effect=flaky_urlopen,
-        ), patch("controlled_compare.bailian_adapter_v0_3.time") as mock_time:
-            mock_time.monotonic.side_effect = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
-            result = call_bailian_once(request, environment)
-        self.assertEqual(call_count["n"], 3)
-        self.assertEqual(result["http_attempts"], 3)
+        ):
+            with self.assertRaises(urllib.error.URLError):
+                call_bailian_once(request, environment)
+        self.assertEqual(call_count["n"], 1)
 
     def test_bailian_transport_does_not_retry_contract_errors(self) -> None:
         from controlled_compare.bailian_adapter_v0_3 import call_bailian_once

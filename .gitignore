@@ -23,3 +23,12 @@ __pycache__/
 
 # 手动创建的本地备份包
 outputs/backup_*/
+
+# 审计导出与派生产物（由 audit_store 从 JSONL 重建，不作为源码提交）
+outputs/audit*.db
+outputs/audit*.csv
+outputs/view_*.csv
+outputs/dashboard.html
+
+# 汇总 JSON（不含原始模型输出）入库；完整结果 JSON 仍保留在本机
+!outputs/summary_*.json
