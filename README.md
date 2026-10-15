@@ -89,7 +89,7 @@ python3 -m controlled_compare.compare_v0_3 \
 | [Mnemosyne](https://github.com/TeleAI-UAGI/Awesome-Agent-Memory) | 记忆读写网关：溯源信任分级 + 哈希链审计 | 思路接近本项目的溯源与审计；本项目额外提供对照实验证据与人工复核队列 |
 | [Veritensor](https://github.com/arsbr/Veritensor) | RAG 入库前静态扫描（投毒 / 注入 / PII） | 管「入库前」；本项目管「写入长期记忆的准入决策」及其全生命周期 |
 
-学术侧，TMA-NM（[arXiv:2606.24322](https://arxiv.org/abs/2606.24322)，2026-06）从理论上证明：纯内容检测与纯溯源防御在「来源洗白」（laundering）攻击下都不可信，**写入时必须绑定来源**——这与本项目「AI 不掌握最终写入权限、由确定性规则裁决」的设计原则方向一致。攻击侧可参考 MPBench（记忆投毒基准）与 GhostWriter（针对 Mem0 / Letta 等主流记忆框架的投毒攻击，注入成功率约 98%）。
+学术侧，TMA-NM（[arXiv:2606.24322](https://arxiv.org/abs/2606.24322)，2026-06）从理论上证明：纯内容检测与纯溯源防御在「来源洗白」（laundering）攻击下都不可信，**写入时必须绑定来源**——这与本项目「AI 不掌握最终写入权限、由确定性规则裁决」的设计原则方向一致。攻击侧可参考 MPBench（记忆投毒基准）与 GhostWriter（[arXiv:2607.06595](https://arxiv.org/abs/2607.06595)，针对 Mem0 / Letta 等主流记忆框架的两阶段投毒攻击，注入成功率约 98%）；GhostWriter 的攻击模式已在本仓库做了确定性复现，见 `incident_reproductions/ghostwriter_2607_06595.py`。
 
 ## 目录结构
 
@@ -97,7 +97,7 @@ python3 -m controlled_compare.compare_v0_3 \
 - `tests/` — 单元测试与历史事故复现回归测试
 - `gold_set/`、`controlled_compare/semantic_gold_v0_1.jsonl` — 虚构测试用例集
 - `data/` — 辅助知识数据（如版本化知识样例）
-- `incident_reproductions/` — 已知 AI 记忆系统事故的最小复现脚本
+- `incident_reproductions/` — 已知 AI 记忆系统事故与论文攻击模式的最小复现脚本（含来源标注）
 - `outputs/` — 评测报告、验收记录（含本次 v0.3 安全验收记录）
 
 ## 安全说明

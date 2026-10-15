@@ -1,6 +1,6 @@
-# 三个 GitHub 事故的隔离机制复现
+# 事故与攻击复现
 
-本目录使用虚构数据和确定性代码，复刻三个公开事故的关键状态转换。它不会安装或运行 OpenViking、Hermes Agent、systemd、真实模型或任何生产系统。
+本目录使用虚构数据和确定性代码，复刻三个公开 GitHub 事故的关键状态转换，以及一篇学术论文提出的记忆投毒攻击模式。它不会安装或运行 OpenViking、Hermes Agent、systemd、真实模型或任何生产系统。
 
 ## 运行
 
@@ -34,9 +34,16 @@ python3 -m incident_reproductions.run_all
 - 本地复现：独立临时 Git 仓库、已完成代码与测试、相冲突的旧记忆、不安全写入路径、强制基线与 fail-closed 路径。
 - 未声称复现：原私有项目内容、Hermes 模型推理或真实运行时文件。
 
+### GhostWriter 记忆投毒攻击（arXiv:2607.06595）
+
+- 原始来源：George Torres, Sharad Shrestha, Satyajayant Misra (New Mexico State University), [When Agents Remember Too Much: Memory Poisoning Attacks on Large Language Model Agents](https://arxiv.org/abs/2607.06595)，2026-07-06。**预印本，复现时未经同行评审**；文中成功率数字（注入约 98%、激活约 60%）是原作者在五种 Agent 架构 × 四种模型上的评测结果，不是本复现的测量值。
+- 来源事实：攻击分两阶段——注入（对抗者把隐藏指令嵌入不可信工具输入，如邮件 / 日历邀请，Agent 将其当作事实存入长期记忆）与激活（之后的良性查询检索到中毒记忆，嵌入指令左右 Agent 行为）；措辞强硬的指令有时会被内容筛查拦下，但描述性 / 礼貌措辞的同一载荷几乎从不被拦下。
+- 本地复现：两阶段攻击模式、directive / descriptive 两种措辞变体、关键词内容筛查的漏检，以及本项目提出的溯源写入门（按来源而非措辞裁决，不可信工具来源中的动作指令一律拒绝并隔离到 `test-only/` 命名空间）。
+- 未声称复现：五种真实 Agent 架构（A-Mem / Mem0 / ExpeL / Letta / MemoryOS）、真实模型、embedding 检索、16 场景基准，以及论文自己的防御方案 AM-Sentry。
+
 ## 三类输出必须区分
 
-- `source fact`：GitHub issue 或已合并 PR 明确记载的事实。
+- `source fact`：GitHub issue、已合并 PR 或所引论文明确记载的事实。
 - `controlled simulation`：为本项目构造的虚构状态和确定性行为。
-- `firewall proposal`：硬 revision 门禁、来源排序与 fail-closed 等本项目设计，不冒充上游已经实现。
+- `firewall proposal`：硬 revision 门禁、来源排序、溯源写入门与 fail-closed 等本项目设计，不冒充上游或论文作者已经实现。
 

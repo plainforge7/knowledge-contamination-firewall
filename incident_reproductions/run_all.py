@@ -4,6 +4,9 @@ import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from incident_reproductions.ghostwriter_2607_06595 import (
+    run_reproduction as run_ghostwriter,
+)
 from incident_reproductions.hermes_17164 import run_reproduction as run_17164
 from incident_reproductions.hermes_2670 import run_reproduction as run_2670
 from incident_reproductions.openviking_4193 import run_reproduction as run_4193
@@ -18,6 +21,7 @@ def main() -> None:
                 run_4193(),
                 run_2670(),
                 run_17164(Path(temp_dir)),
+                run_ghostwriter(),
             ],
         }
     print(json.dumps(result, ensure_ascii=False, indent=2))

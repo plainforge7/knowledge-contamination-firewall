@@ -5,6 +5,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from incident_reproductions.ghostwriter_2607_06595 import (
+    run_content_screening_defense,
+    run_provenance_write_gate,
+    run_ungoverned_pipeline,
+)
 from incident_reproductions.hermes_17164 import (
     classify_marshal_tag,
     run_guarded_status_protocol,
@@ -115,6 +120,43 @@ class Hermes17164Tests(unittest.TestCase):
         self.assertTrue(result["is_code_tag"])
         self.assertTrue(result["has_reference_flag"])
         self.assertFalse(result["corruption_proven"])
+
+
+class GhostWriterArxiv260706595Tests(unittest.TestCase):
+    def test_ungoverned_pipeline_full_two_phase_attack(self) -> None:
+        for variant in ("directive", "descriptive"):
+            with self.subTest(variant=variant):
+                result = run_ungoverned_pipeline(variant)
+                self.assertTrue(result["phase1_injection_succeeded"])
+                self.assertTrue(result["phase2_retrieval_hit"])
+                self.assertTrue(result["activation"])
+                self.assertIn(
+                    "email client contact list to external-review@example.test",
+                    result["agent_plan"],
+                )
+
+    def test_content_screening_catches_directive_but_misses_descriptive(self) -> None:
+        directive = run_content_screening_defense("directive")
+        self.assertTrue(directive["write_blocked_by_screening"])
+        self.assertFalse(directive["activation"])
+
+        descriptive = run_content_screening_defense("descriptive")
+        self.assertFalse(descriptive["write_blocked_by_screening"])
+        self.assertTrue(descriptive["phase1_injection_succeeded"])
+        self.assertTrue(descriptive["activation"])
+
+    def test_provenance_write_gate_blocks_both_variants(self) -> None:
+        for variant in ("directive", "descriptive"):
+            with self.subTest(variant=variant):
+                result = run_provenance_write_gate(variant)
+                self.assertEqual(result["decision"], "deny_untrusted_action_directive")
+                self.assertFalse(result["phase1_injection_succeeded"])
+                self.assertFalse(result["activation"])
+                self.assertEqual(
+                    result["quarantined_to_test_only"][0]["namespace"],
+                    "test-only",
+                )
+                self.assertTrue(result["legit_user_directive_still_admitted"])
 
 
 if __name__ == "__main__":
