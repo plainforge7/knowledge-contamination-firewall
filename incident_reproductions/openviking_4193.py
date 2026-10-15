@@ -78,6 +78,11 @@ def _render_markdown(extracted_fields: dict[str, Any]) -> str:
     )
 
 
+# Modelling assumption for the incident: the buggy merge path reports success.
+# This is an input to the simulation, not an observation of OpenViking.
+SIMULATED_BUGGY_COMMIT_RAISES = False
+
+
 def run_reproduction() -> dict[str, Any]:
     old_fields = {
         "action_key": "test_action",
@@ -123,7 +128,7 @@ def run_reproduction() -> dict[str, Any]:
             "merge_ops": {key: value.value for key, value in merge_ops.items()},
         },
         "buggy": {
-            "commit_completed_without_exception": True,
+            "commit_completed_without_exception": not SIMULATED_BUGGY_COMMIT_RAISES,
             "rendered_markdown": markdown,
             "persisted_structured_fields": buggy_persisted,
             "split_brain": (

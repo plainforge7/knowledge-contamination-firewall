@@ -7,10 +7,15 @@ import sqlite3
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 
 MEMORY_STATUSES = {"confirmed", "quarantine", "denied"}
+ALLOWED_TRANSITIONS = {
+    "quarantine": {"confirmed", "denied"},
+    "confirmed": {"quarantine", "denied"},
+    "denied": set(),
+}
 SANDBOX_PREFIX = "test-only/"
 
 SCHEMA = """
@@ -43,6 +48,18 @@ CREATE INDEX IF NOT EXISTS idx_memory_events_memory
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _string_values(value: Any) -> Iterator[str]:
+    """Yield every string leaf of a decoded JSON value (keys are not yielded)."""
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for item in value.values():
+            yield from _string_values(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _string_values(item)
 
 
 class MemoryStore:
@@ -121,6 +138,9 @@ class MemoryStore:
         old_status = str(row["status"])
         if old_status == status:
             return
+        # Denied is terminal: a rejected memory can only come back through a new candidate.
+        if status not in ALLOWED_TRANSITIONS[old_status]:
+            raise ValueError(f"illegal memory transition: {old_status} -> {status}")
         timestamp = _now()
         with self.connection:
             self.connection.execute(
@@ -140,13 +160,21 @@ class MemoryStore:
         query = query.strip()
         if not query:
             return []
+        # Match only against content values, never JSON keys or JSON escaping.
+        # SQL LIKE is avoided because '%' and '_' in a query act as wildcards.
+        needle = query.casefold()
         rows = self.connection.execute(
             """SELECT * FROM memories
             WHERE namespace = ? AND status = 'confirmed'
-              AND content_json LIKE ? ORDER BY updated_at DESC""",
-            (namespace, f"%{query}%"),
+            ORDER BY updated_at DESC""",
+            (namespace,),
         ).fetchall()
-        return [self._decode(row) for row in rows]
+        matched = []
+        for row in rows:
+            memory = self._decode(row)
+            if any(needle in text.casefold() for text in _string_values(memory["content"])):
+                matched.append(memory)
+        return matched
 
     def events(self, memory_id: str) -> list[dict[str, Any]]:
         rows = self.connection.execute(

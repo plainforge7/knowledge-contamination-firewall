@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 
-RULE_VERSION = "0.3.1-scope-target"
+RULE_VERSION = "0.3.3-deny-shortcut-both-arms"
 HOLD_RETENTION_DAYS = 30
 HOLD_AUDIT_RETENTION_DAYS = 90
 WRITE_DECISIONS = {"permit", "hold", "deny"}
@@ -405,7 +405,8 @@ def validate_ai_proposal(
         "patch",
     }
     errors = [f"missing field: {field}" for field in sorted(required - output.keys())]
-    if output.get("write_decision") not in WRITE_DECISIONS:
+    write_decision = output.get("write_decision")
+    if not isinstance(write_decision, str) or write_decision not in WRITE_DECISIONS:
         errors.append("invalid write_decision")
 
     evidence = _case_evidence(case)
@@ -437,7 +438,9 @@ def validate_ai_proposal(
     if not isinstance(output.get("recommended_actions"), list):
         errors.append("recommended_actions must be an array")
     for field in ("false_positive_risk", "release_condition", "rollback_action"):
-        if not str(output.get(field, "")).strip():
+        # str(None) == "None" would pass a truthiness-by-string check; require real text.
+        value = output.get(field)
+        if not isinstance(value, str) or not value.strip():
             errors.append(f"{field} must be non-empty")
 
     patch = output.get("patch")
@@ -446,7 +449,8 @@ def validate_ai_proposal(
     elif set(patch) != PATCH_FIELDS:
         errors.append("patch must contain exactly the v0.3 patch fields")
     else:
-        if patch.get("operation") not in {"add", "replace", "delete", "none"}:
+        operation = patch.get("operation")
+        if not isinstance(operation, str) or operation not in {"add", "replace", "delete", "none"}:
             errors.append("invalid patch operation")
         if patch.get("status") != "proposed":
             errors.append("patch status must be proposed")
@@ -464,7 +468,8 @@ def validate_ai_proposal(
             patch.get("target") is not None or patch.get("value") is not None
         ):
             errors.append("operation none cannot include target or value")
-        if patch.get("operation") != "none" and not str(patch.get("target", "")).strip():
+        target = patch.get("target")
+        if patch.get("operation") != "none" and not (isinstance(target, str) and target.strip()):
             errors.append("writing patch requires a target")
         if patch.get("operation") != "none" and not patch.get("evidence_ids"):
             errors.append("writing patch requires evidence_ids")
@@ -731,7 +736,8 @@ def apply_firewall(
         valid_proposal, contract_errors = validate_ai_proposal(ai_proposal, case)
 
     if infrastructure_errors or contract_errors:
-        final_decision = "hold"
+        # Fail closed to hold, but never soften a deterministic deny.
+        final_decision = max((base["decision"], "hold"), key=DECISION_SEVERITY.__getitem__)
         authority = "fail_closed"
     elif valid_proposal is None:
         final_decision = base["decision"]
@@ -1156,24 +1162,28 @@ def action_bundle_complete(result: Mapping[str, Any]) -> bool:
 
 
 def simulate_transaction(
-    memory: Mapping[str, Any],
+    memory: dict[str, Any],
     patch: Mapping[str, Any],
     *,
     inject_write_failure: bool = False,
 ) -> dict[str, Any]:
-    """In-memory transaction proof; it never connects to a real memory store."""
-    before = copy.deepcopy(dict(memory))
-    working = copy.deepcopy(before)
-    snapshot_taken = True
+    """In-memory transaction with a real snapshot and in-place rollback.
+
+    ``memory`` is mutated in place. On any failure it is restored from the
+    snapshot taken before the write, and ``rolled_back`` is reported only when
+    the live object equals that snapshot. It never connects to a real store.
+    """
+    snapshot = copy.deepcopy(dict(memory))
+    snapshot_taken = snapshot == memory
+    if is_nonwriting_patch(patch):
+        return {
+            "snapshot_taken": snapshot_taken,
+            "committed": False,
+            "rolled_back": False,
+            "before": snapshot,
+            "after": copy.deepcopy(dict(memory)),
+        }
     try:
-        if is_nonwriting_patch(patch):
-            return {
-                "snapshot_taken": snapshot_taken,
-                "committed": False,
-                "rolled_back": False,
-                "before": before,
-                "after": working,
-            }
         location = validate_patch_location(patch)
         if not location["allowed"]:
             raise ValueError(location["reason"])
@@ -1182,13 +1192,14 @@ def simulate_transaction(
         if patch["target"] == "/":
             if operation not in {"add", "replace"} or not isinstance(value, Mapping):
                 raise ValueError("sandbox root requires add/replace with an object")
-            working = copy.deepcopy(dict(value))
+            memory.clear()
+            memory.update(copy.deepcopy(dict(value)))
         else:
             # Exact whitelist validation above limits this to one fields child.
             if operation not in {"add", "replace", "delete"}:
                 raise ValueError("unsupported patch operation")
             field = patch["target"].removeprefix("/fields/")
-            fields = working.get("fields")
+            fields = memory.get("fields")
             if not isinstance(fields, dict):
                 raise ValueError("fields parent must already be an object")
             if operation in {"replace", "delete"} and field not in fields:
@@ -1205,16 +1216,17 @@ def simulate_transaction(
             "snapshot_taken": snapshot_taken,
             "committed": True,
             "rolled_back": False,
-            "before": before,
-            "after": working,
+            "before": snapshot,
+            "after": copy.deepcopy(dict(memory)),
         }
     except Exception as error:
-        working = copy.deepcopy(before)
+        memory.clear()
+        memory.update(copy.deepcopy(snapshot))
         return {
             "snapshot_taken": snapshot_taken,
             "committed": False,
-            "rolled_back": True,
-            "before": before,
-            "after": working,
+            "rolled_back": memory == snapshot,
+            "before": snapshot,
+            "after": copy.deepcopy(dict(memory)),
             "error": str(error),
         }

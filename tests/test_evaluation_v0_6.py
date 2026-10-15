@@ -37,4 +37,6 @@ class EvaluationV06Tests(unittest.TestCase):
             with MemoryStore(Path(directory) / "memory.db") as store:
                 result = evaluate_retrieval_cases(store, [])
         self.assertEqual(result["total_cases"], 0)
-        self.assertTrue(result["safety_gate"])
+        # No cases is no evidence: the safety gate must not pass vacuously.
+        self.assertFalse(result["safety_gate"])
+        self.assertIsNone(result["accuracy"])

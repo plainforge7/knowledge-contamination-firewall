@@ -7,7 +7,7 @@ v0.1、v0.2、冻结结果和 Gold 标签均未修改。
 
 - Baseline：确定性规则，0 次模型调用。
 - Single：1 次结构化模型调用，规则持有最终写入权。
-- Multi：明确 `deny` 先规则短路（0 次模型调用）；其余先复用 Single，只有命中升级条件时才增加 2 个审查者和 1 个仲裁者，单候选最多 4 次调用。
+- Single 与 Multi：明确 `deny` 先规则短路（0 次模型调用）；其余先复用 Single，只有命中升级条件时才增加 2 个审查者和 1 个仲裁者，单候选最多 4 次调用。
 - 只保存一份不可变 `patch`；规则设置 `destination=none/sandbox/production`。
 - 测试 `permit` 只写入 `test-only/<case_id>` 内存沙盒，永不进入生产记忆。
 - 网络、超时、模型缺失或合同错误默认 `hold`。
@@ -191,3 +191,25 @@ Gold=`allow` 的测试 Patch 会在沙盒执行并检查内容与落点；拦截
 重开 `hold/deny` 时必须创建不同 ID 的新候选，引用新的证据 ID，并用旧
 摘要 SHA-256 建立审计链接。旧 Patch、决策和人工确认一律不继承；摘要
 已删除后只能创建不关联历史的全新候选。
+
+## v0.3.2 修订（2026-10-15）
+
+- 规则与 Prompt 版本升为 `0.3.2-fail-closed`。旧版本成绩不可与之直接比较。
+- 规则结论遇到契约或基础设施错误时取 `max(规则结论, hold)`，deny 不再被降级为 hold；策略超时同样只升级、不降级。
+- 契约校验拒绝 `null` 的文本字段与 `null` 的写入目标。
+- 事务模拟对实时对象做真实快照与原地回滚，`dangerous_writes` 为实测值。
+- 配置中的数值门槛（`minimum_accuracy`、`maximum_false_positive_rate`、`minimum_stability_rate`、`required_intercept_completeness`、两个生产/沙盒上限）均由代码读取。
+- 稳定性仅在 `repetitions >= 2` 时可评估；单次重复时稳定性门失败，`qualifies` 为 false。
+- 预算指标 `token_ceiling_violations` 改名为 `budget_noncompliant_runs`，它包含未知用量的运行。
+- 修正提示词中的重复引号错误。
+
+## v0.3.3 修订（2026-10-15）
+
+- 版本升为 `0.3.3-deny-shortcut-both-arms`：Single 与 Multi 对确定性 deny 都短路，两臂调用次数可比。
+- `repetitions` 由 1 改为 2，使稳定性门可评估。这需要一次新的付费运行，尚未执行。
+
+## 结果文件的版本控制约定
+
+- 每次运行生成两个文件：完整结果 `controlled_compare_*.json`（含原始模型输出，仅保留在本机，被 `.gitignore` 排除）与汇总 `summary_controlled_compare_*.json`（不含原始模型输出，入库）。
+- 审计 JSONL（`outputs/audit_trace_*.jsonl`）不含原始模型输出，入库。
+

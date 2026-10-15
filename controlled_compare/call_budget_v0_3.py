@@ -110,5 +110,5 @@ class CallBudget:
                 if row["status"] == "usage_unknown"
             ),
             "elapsed_seconds": self.previous_elapsed + self.clock() - self.started,
-            "input_estimation": "utf8_bytes_plus_256; conservative_estimate_not_exact",
+            "input_estimation": "json_chars_div_4_plus_256; conservative_estimate_not_exact",
         }

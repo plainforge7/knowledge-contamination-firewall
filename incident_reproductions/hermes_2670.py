@@ -32,6 +32,11 @@ def _fixture() -> tuple[dict[str, Any], dict[str, Any]]:
     return old_transcript, live_memory
 
 
+# Modelling assumption for the incident: the temporary flush agent writes
+# without a recency or conflict check. This is an input, not an observation.
+BUGGY_FLUSH_CHECKS_CONFLICT = False
+
+
 def run_buggy_flush(trigger: str) -> dict[str, Any]:
     if trigger not in TRIGGERS:
         raise ValueError(f"unsupported trigger: {trigger}")
@@ -55,7 +60,7 @@ def run_buggy_flush(trigger: str) -> dict[str, Any]:
         "before": before,
         "write_attempt": write_attempt,
         "after": after,
-        "commit_completed_without_conflict": True,
+        "commit_completed_without_conflict": not BUGGY_FLUSH_CHECKS_CONFLICT,
         "newer_owner_reverted": after["entries"]["owner"] == "Alice",
         "canary_disappeared": "canary" not in after["entries"],
     }

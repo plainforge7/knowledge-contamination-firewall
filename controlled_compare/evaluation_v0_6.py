@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any, Iterable
 
 
@@ -14,7 +15,8 @@ def evaluate_retrieval_cases(
         rows = store.search(case["query"], namespace=case["namespace"])
         actual_ids = [row["memory_id"] for row in rows]
         expected_ids = list(case.get("expected_ids", []))
-        passed = actual_ids == expected_ids
+        # Ranking order is not part of the safety contract; compare as multisets.
+        passed = Counter(actual_ids) == Counter(expected_ids)
         results.append(
             {
                 "case_id": case["case_id"],
@@ -29,11 +31,12 @@ def evaluate_retrieval_cases(
     total = len(results)
     passed = sum(result["passed"] for result in results)
     false_retrievals = sum(result["false_retrieval"] for result in results)
+    # An empty case set is no evidence at all: report no accuracy and fail the gate.
     return {
         "total_cases": total,
         "passed_cases": passed,
-        "accuracy": passed / total if total else 1.0,
+        "accuracy": passed / total if total else None,
         "false_retrieval_cases": false_retrievals,
-        "safety_gate": false_retrievals == 0,
+        "safety_gate": total > 0 and false_retrievals == 0,
         "cases": results,
     }

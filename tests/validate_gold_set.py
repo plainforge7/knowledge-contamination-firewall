@@ -29,6 +29,12 @@ CATEGORY_DECISION = {
 }
 
 
+def _require(condition: bool, message: object) -> None:
+    # Explicit check instead of `assert`, which `python -O` strips out entirely.
+    if not condition:
+        raise AssertionError(message)
+
+
 def load_jsonl(path: Path) -> list[dict]:
     rows = []
     for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
@@ -54,40 +60,40 @@ def main() -> None:
     knowledge = load_jsonl(KNOWLEDGE_PATH)
     clean_ids = {row["id"] for row in knowledge}
 
-    assert len(gold) == 20, f"expected 20 cases, got {len(gold)}"
+    _require(len(gold) == 20, f"expected 20 cases, got {len(gold)}")
     case_ids = [row["case_id"] for row in gold]
-    assert len(case_ids) == len(set(case_ids)), "duplicate case_id"
-    assert case_ids == [f"GS-{index:03d}" for index in range(1, 21)], "case IDs are not sequential"
+    _require(len(case_ids) == len(set(case_ids)), "duplicate case_id")
+    _require(case_ids == [f"GS-{index:03d}" for index in range(1, 21)], "case IDs are not sequential")
 
     counts = Counter(row["category"] for row in gold)
-    assert dict(counts) == EXPECTED_COUNTS, f"unexpected category distribution: {dict(counts)}"
+    _require(dict(counts) == EXPECTED_COUNTS, f"unexpected category distribution: {dict(counts)}")
 
     # 相同问题可以跨类别复用，以便只改变污染条件进行受控对比；
     # 但同一类别内不应出现重复问题。
     query_category_pairs = [(row["category"], row["query"]) for row in gold]
-    assert len(query_category_pairs) == len(set(query_category_pairs)), "duplicate query within category"
+    _require(len(query_category_pairs) == len(set(query_category_pairs)), "duplicate query within category")
 
     for case in gold:
         expected = case["expected"]
         setup = case["setup"]
-        assert expected["decision"] == CATEGORY_DECISION[case["category"]], case["case_id"]
-        assert set(setup["clean_knowledge_ids"]).issubset(clean_ids), case["case_id"]
+        _require(expected["decision"] == CATEGORY_DECISION[case["category"]], case["case_id"])
+        _require(set(setup["clean_knowledge_ids"]).issubset(clean_ids), case["case_id"])
         known_ids = available_evidence_ids(case, clean_ids)
-        assert set(expected["required_evidence_ids"]).issubset(known_ids), case["case_id"]
-        assert set(expected["forbidden_evidence_ids"]).issubset(known_ids), case["case_id"]
-        assert not set(expected["required_evidence_ids"]) & set(expected["forbidden_evidence_ids"]), case["case_id"]
-        assert all(item.get("values") for item in expected["answer_assertions"]), case["case_id"]
-        assert math.isclose(sum(case["scoring"].values()), 1.0), case["case_id"]
+        _require(set(expected["required_evidence_ids"]).issubset(known_ids), case["case_id"])
+        _require(set(expected["forbidden_evidence_ids"]).issubset(known_ids), case["case_id"])
+        _require(not set(expected["required_evidence_ids"]) & set(expected["forbidden_evidence_ids"]), case["case_id"])
+        _require(all(item.get("values") for item in expected["answer_assertions"]), case["case_id"])
+        _require(math.isclose(sum(case["scoring"].values()), 1.0), case["case_id"])
 
         if case["category"] == "clean_allow":
-            assert not setup["injected_items"], case["case_id"]
-            assert not expected["forbidden_evidence_ids"], case["case_id"]
+            _require(not setup["injected_items"], case["case_id"])
+            _require(not expected["forbidden_evidence_ids"], case["case_id"])
         elif case["category"] == "stale_snapshot_overwrite":
-            assert any(event["type"] == "background_write_attempt" for event in setup["events"]), case["case_id"]
+            _require(any(event["type"] == "background_write_attempt" for event in setup["events"]), case["case_id"])
         elif case["category"] == "realtime_evidence_priority":
-            assert setup["realtime_evidence"], case["case_id"]
+            _require(setup["realtime_evidence"], case["case_id"])
         else:
-            assert setup["injected_items"] or setup["stale_candidate_ids"], case["case_id"]
+            _require(setup["injected_items"] or setup["stale_candidate_ids"], case["case_id"])
 
     print(json.dumps({"status": "ok", "cases": len(gold), "category_counts": dict(counts)}, ensure_ascii=False))
 

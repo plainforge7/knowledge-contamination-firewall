@@ -1,0 +1,183 @@
+{
+  "protocol_version": "0.3",
+  "dataset": "semantic-gold",
+  "dataset_role": "semantic_test",
+  "scope_complete": true,
+  "evaluation_valid": true,
+  "adapter_notice": "Paid model evaluation.",
+  "model": {
+    "provider": "alibaba_bailian",
+    "region": "ap-northeast-1",
+    "model_id": "qwen3.7-max-2026-05-20",
+    "enable_thinking": true,
+    "temperature": 0.2,
+    "top_p": null,
+    "preserve_thinking": false,
+    "tools_enabled": false,
+    "confirmation": "carried_forward_from_human_confirmed_v0.2",
+    "runtime_model_id": "qwen3.7-max-2026-05-20",
+    "runtime_temperature": 0.2
+  },
+  "case_count": 20,
+  "repetitions": 1,
+  "checkpoint": {
+    "path": "/Users/fyn/Documents/ChatGPT/知识污染防火墙/outputs/checkpoints/controlled_compare_v0_3_bailian_semantic_gold.jsonl",
+    "resumed_records": 0,
+    "rerun_infrastructure_records": 0
+  },
+  "transaction_safety_proof": {
+    "data_policy": "synthetic_in_memory_only",
+    "snapshot_before_write": true,
+    "successful_commit_readback": true,
+    "injected_failure_rolled_back": true,
+    "touches_formal_memory": false
+  },
+  "scores": {
+    "baseline": {
+      "qualifies": true,
+      "evaluation_complete": true,
+      "quality": {
+        "majority_correct_cases": 20,
+        "case_count": 20,
+        "accuracy": 1.0,
+        "false_positives": 0,
+        "pollution_false_permits": 0,
+        "stable_cases": 20,
+        "complete_repetition_cases": 20,
+        "intercept_incomplete_runs": 0,
+        "sandbox_patch_accuracy": 1.0,
+        "patch_metric_note": "Permit cases execute the immutable patch in a test-only sandbox; blocked cases route to none."
+      },
+      "hard_gates": {
+        "test_content_production_routes": 0,
+        "blocked_or_error_execution_routes": 0,
+        "pollution_route_violations": 0,
+        "pollution_false_permit_runs": 0,
+        "sandbox_execution_failures": 0,
+        "dangerous_writes": 0,
+        "provenance_mixing": 0,
+        "token_ceiling_violations": 0,
+        "snapshot_failures": 0,
+        "injected_rollback_failures": 0,
+        "action_bundle_failures": 0,
+        "all_pass": true
+      },
+      "diagnostics": {
+        "n_a_runs": 0,
+        "infrastructure_failures": 0,
+        "model_contract_failures": 0
+      },
+      "operations": {
+        "successful_model_calls": 0,
+        "total_tokens": 0,
+        "cost_cny": 0,
+        "cost_cny_known": true,
+        "cost_unknown_runs": 0,
+        "latency_p50_ms": 0.22422949768952094,
+        "latency_p95_ms": 0.3857958483422411,
+        "max_latency_ms": 0.8569169949623756,
+        "multi_escalated_runs": 0,
+        "sandbox_executions": 10
+      }
+    },
+    "single": {
+      "qualifies": false,
+      "evaluation_complete": false,
+      "quality": {
+        "majority_correct_cases": 18,
+        "case_count": 20,
+        "accuracy": 0.9,
+        "false_positives": 0,
+        "pollution_false_permits": 0,
+        "stable_cases": 18,
+        "complete_repetition_cases": 18,
+        "intercept_incomplete_runs": 0,
+        "sandbox_patch_accuracy": 1.0,
+        "patch_metric_note": "Permit cases execute the immutable patch in a test-only sandbox; blocked cases route to none."
+      },
+      "hard_gates": {
+        "test_content_production_routes": 0,
+        "blocked_or_error_execution_routes": 0,
+        "pollution_route_violations": 0,
+        "pollution_false_permit_runs": 0,
+        "sandbox_execution_failures": 0,
+        "dangerous_writes": 0,
+        "provenance_mixing": 0,
+        "token_ceiling_violations": 2,
+        "snapshot_failures": 0,
+        "injected_rollback_failures": 0,
+        "action_bundle_failures": 0,
+        "all_pass": false
+      },
+      "diagnostics": {
+        "n_a_runs": 2,
+        "infrastructure_failures": 2,
+        "model_contract_failures": 0
+      },
+      "operations": {
+        "successful_model_calls": 18,
+        "total_tokens": 44654,
+        "cost_cny": null,
+        "cost_cny_known": false,
+        "cost_unknown_runs": 2,
+        "latency_p50_ms": 27778.92583349967,
+        "latency_p95_ms": 40802.50915835315,
+        "max_latency_ms": 60013.50716700108,
+        "multi_escalated_runs": 0,
+        "sandbox_executions": 10
+      }
+    },
+    "multi": {
+      "qualifies": false,
+      "evaluation_complete": true,
+      "quality": {
+        "majority_correct_cases": 20,
+        "case_count": 20,
+        "accuracy": 1.0,
+        "false_positives": 0,
+        "pollution_false_permits": 0,
+        "stable_cases": 20,
+        "complete_repetition_cases": 20,
+        "intercept_incomplete_runs": 0,
+        "sandbox_patch_accuracy": 0.95,
+        "patch_metric_note": "Permit cases execute the immutable patch in a test-only sandbox; blocked cases route to none."
+      },
+      "hard_gates": {
+        "test_content_production_routes": 0,
+        "blocked_or_error_execution_routes": 0,
+        "pollution_route_violations": 0,
+        "pollution_false_permit_runs": 0,
+        "sandbox_execution_failures": 1,
+        "dangerous_writes": 0,
+        "provenance_mixing": 0,
+        "token_ceiling_violations": 0,
+        "snapshot_failures": 0,
+        "injected_rollback_failures": 0,
+        "action_bundle_failures": 0,
+        "all_pass": false
+      },
+      "diagnostics": {
+        "n_a_runs": 0,
+        "infrastructure_failures": 0,
+        "model_contract_failures": 0
+      },
+      "operations": {
+        "successful_model_calls": 31,
+        "total_tokens": 73811,
+        "cost_cny": 0.2979064,
+        "cost_cny_known": true,
+        "cost_unknown_runs": 0,
+        "latency_p50_ms": 26694.257166498573,
+        "latency_p95_ms": 81865.19294825484,
+        "max_latency_ms": 87794.40479200275,
+        "multi_escalated_runs": 5,
+        "sandbox_executions": 10
+      }
+    }
+  },
+  "selection": {
+    "status": "candidate_selected",
+    "architecture": "baseline"
+  },
+  "raw_runs_omitted": 60
+}

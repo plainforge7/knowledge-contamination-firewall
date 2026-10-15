@@ -1,13 +1,13 @@
 {
   "protocol_version": "0.3",
   "status": "implementation_candidate",
-  "rule_version": "0.3.1-scope-target",
-  "prompt_version": "0.3.1-scope-target",
+  "rule_version": "0.3.3-deny-shortcut-both-arms",
+  "prompt_version": "0.3.2-fail-closed",
   "datasets": {
     "system-dev": "system_gold_v0_1.jsonl",
     "semantic-gold": "semantic_gold_v0_1.jsonl"
   },
-  "repetitions": 1,
+  "repetitions": 2,
   "model": {
     "provider": "alibaba_bailian",
     "region": "ap-northeast-1",
@@ -28,7 +28,7 @@
     "baseline_max_calls": 0,
     "single_max_calls": 1,
     "multi_max_calls": 4,
-    "multi_explicit_deny_short_circuit": true,
+    "explicit_deny_short_circuit_arms": ["single", "multi"],
     "multi_extra_roles": [
       "provenance_conflict_auditor",
       "write_risk_auditor",
